@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Laser Track Racer - First Person 3D</title>
+    <title>Laser Track Racer - Curved Track</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
@@ -16,102 +16,119 @@
 <body>
     <div id="ui">
         <div id="speed">SPEED: 0 km/h</div>
-        <div style="margin-top:10px; font-size:13px; opacity:0.85;">WASD / Arrows to drive • First Person</div>
+        <div style="margin-top:8px; font-size:13px; opacity:0.85;">WASD/Arrows • First Person • Curved Laser Track</div>
     </div>
 
     <script>
         // =============================================
         // LASER TRACK RACER - First Person 3D
-        // Physics & car model based on common public patterns
-        // from open-source browser racing games (velocity-based
-        // car physics widely used in many GitHub HTML5/Three.js racers)
+        // Track built using THREE.CatmullRomCurve3 (official Three.js)
+        // + common public patterns from open-source racing demos
+        // (e.g. cconsta1/threejs_car_demo style curves + apex points)
         // =============================================
 
         const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 2000);
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.shadowMap.enabled = true;
         document.body.appendChild(renderer.domElement);
 
-        // Lights
         scene.add(new THREE.AmbientLight(0x222244, 0.5));
         const sun = new THREE.DirectionalLight(0xffffff, 0.9);
         sun.position.set(80, 120, 50);
-        sun.castShadow = true;
         scene.add(sun);
 
-        // === FUTURISTIC NEON LASER TRACK ===
-        const track = new THREE.Group();
+        // === COMPLETE CURVED TRACK WITH APEXES + START/FINISH ===
+        // Points define the racing line with corners (apexes)
+        const trackPoints = [
+            new THREE.Vector3(0, 0, -100),
+            new THREE.Vector3(60, 0, -80),
+            new THREE.Vector3(85, 0, -20),   // Apex 1 (right turn)
+            new THREE.Vector3(70, 0, 50),
+            new THREE.Vector3(20, 0, 90),    // Apex 2
+            new THREE.Vector3(-50, 0, 85),
+            new THREE.Vector3(-90, 0, 40),   // Apex 3 (left turn)
+            new THREE.Vector3(-85, 0, -30),
+            new THREE.Vector3(-40, 0, -85),
+            new THREE.Vector3(0, 0, -100)    // back to start
+        ];
 
-        // Dark road surface
-        const road = new THREE.Mesh(
-            new THREE.PlaneGeometry(48, 240),
-            new THREE.MeshLambertMaterial({ color: 0x0a0a1f })
-        );
-        road.rotation.x = -Math.PI/2;
-        road.position.y = 0.05;
+        const curve = new THREE.CatmullRomCurve3(trackPoints, true, 'centripetal', 0.5);
+
+        // Generate road along the curve using TubeGeometry
+        const roadGeometry = new THREE.TubeGeometry(curve, 200, 18, 8, true);
+        const roadMaterial = new THREE.MeshLambertMaterial({ color: 0x0a0a1f });
+        const road = new THREE.Mesh(roadGeometry, roadMaterial);
         road.receiveShadow = true;
-        track.add(road);
+        scene.add(road);
 
-        // Bright cyan laser rails
+        // Glowing laser rails along the curve
         const railMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
-        const leftRail = new THREE.Mesh(new THREE.BoxGeometry(1.4, 4, 240), railMat);
-        leftRail.position.set(-23, 2, 0);
-        track.add(leftRail);
+        const leftRailGeo = new THREE.TubeGeometry(curve, 200, 1.2, 6, true);
+        const leftRail = new THREE.Mesh(leftRailGeo, railMat);
+        leftRail.position.y = 2;
+        scene.add(leftRail);
 
         const rightRail = leftRail.clone();
-        rightRail.position.x = 23;
-        track.add(rightRail);
+        rightRail.position.y = 2;
+        scene.add(rightRail);
 
-        // Magenta accent glow lines
-        const accentMat = new THREE.MeshBasicMaterial({ color: 0xff00cc });
-        const leftAccent = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.5, 240), accentMat);
-        leftAccent.position.set(-22.3, 4.2, 0);
-        track.add(leftAccent);
-
-        const rightAccent = leftAccent.clone();
-        rightAccent.position.x = 22.3;
-        track.add(rightAccent);
-
-        // Center neon dashes (laser feel)
-        for (let z = -110; z < 110; z += 6) {
-            const dash = new THREE.Mesh(
-                new THREE.BoxGeometry(2, 0.4, 2.8),
-                new THREE.MeshBasicMaterial({ color: 0x00ffaa })
-            );
-            dash.position.set(0, 0.5, z);
-            track.add(dash);
+        // Neon center dashes
+        const dashMat = new THREE.MeshBasicMaterial({ color: 0x00ffaa });
+        for (let i = 0; i < 40; i++) {
+            const t = i / 40;
+            const pos = curve.getPointAt(t);
+            const dash = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.4, 3), dashMat);
+            dash.position.copy(pos);
+            dash.position.y = 0.6;
+            scene.add(dash);
         }
 
-        scene.add(track);
+        // === START / FINISH LINE ===
+        const startPos = curve.getPointAt(0);
+        const startFinish = new THREE.Mesh(
+            new THREE.PlaneGeometry(42, 9),
+            new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide })
+        );
+        startFinish.rotation.x = -Math.PI / 2;
+        startFinish.position.set(startPos.x, 0.3, startPos.z);
+        scene.add(startFinish);
+
+        // Checkered stripes on start/finish
+        for (let i = -18; i < 18; i += 6) {
+            const stripe = new THREE.Mesh(
+                new THREE.PlaneGeometry(5, 9),
+                new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide })
+            );
+            stripe.rotation.x = -Math.PI / 2;
+            stripe.position.set(startPos.x + i, 0.35, startPos.z);
+            scene.add(stripe);
+        }
 
         // === CAR ===
         const car = new THREE.Group();
-
-        const bodyMat = new THREE.MeshLambertMaterial({ color: 0x4488ff });
-        const body = new THREE.Mesh(new THREE.BoxGeometry(4.2, 1.6, 9), bodyMat);
+        const body = new THREE.Mesh(
+            new THREE.BoxGeometry(4.2, 1.6, 9),
+            new THREE.MeshLambertMaterial({ color: 0x4488ff })
+        );
         body.position.y = 1.6;
-        body.castShadow = true;
         car.add(body);
 
-        // Windshield
         const glass = new THREE.Mesh(
             new THREE.BoxGeometry(3.4, 1.4, 3.8),
-            new THREE.MeshLambertMaterial({ color: 0x99eeff, transparent:true, opacity:0.45 })
+            new THREE.MeshLambertMaterial({ color: 0x99eeff, transparent: true, opacity: 0.45 })
         );
         glass.position.set(0, 2.5, -1.8);
         car.add(glass);
 
         scene.add(car);
 
-        // First-person camera attached to car
+        // First person camera
         camera.position.set(0, 4.5, -4);
         car.add(camera);
 
-        // === RACING PHYSICS (public pattern) ===
-        // Based on common velocity + angle model used in many
-        // open source browser racers on GitHub
+        // === PHYSICS ===
         let speed = 0;
         let angle = 0;
         const MAX_SPEED = 145;
@@ -124,23 +141,16 @@
         window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
         function updatePhysics() {
-            // Throttle
             if (keys['w'] || keys['arrowup']) speed += ACCEL;
-            // Brake / Reverse
             if (keys['s'] || keys['arrowdown']) speed -= ACCEL * 0.85;
 
-            // Steering
             const steerFactor = Math.max(0.35, Math.abs(speed) / 55);
             if (keys['a'] || keys['arrowleft']) angle += TURN_SPEED * steerFactor;
             if (keys['d'] || keys['arrowright']) angle -= TURN_SPEED * steerFactor;
 
-            // Apply friction
             speed *= FRICTION;
-
-            // Clamp
             speed = Math.max(-40, Math.min(MAX_SPEED, speed));
 
-            // Movement
             const moveX = Math.sin(angle) * speed * 0.055;
             const moveZ = Math.cos(angle) * speed * 0.055;
 
@@ -148,14 +158,13 @@
             car.position.z += moveZ;
             car.rotation.y = angle;
 
-            // Track boundaries
-            if (Math.abs(car.position.x) > 40) {
-                car.position.x = Math.sign(car.position.x) * 40;
-                speed *= 0.55;
-            }
-            if (Math.abs(car.position.z) > 115) {
-                car.position.z = Math.sign(car.position.z) * 115;
-                speed *= 0.55;
+            // Keep car on track (simple radial boundary)
+            const dist = Math.sqrt(car.position.x * car.position.x + car.position.z * car.position.z);
+            if (dist > 100) {
+                const s = 100 / dist;
+                car.position.x *= s;
+                car.position.z *= s;
+                speed *= 0.6;
             }
 
             document.getElementById('speed').textContent = `SPEED: ${Math.abs(Math.floor(speed))} km/h`;
@@ -174,7 +183,7 @@
         });
 
         animate();
-        console.log('%c[Laser Track Racer] Pushed to GitHub. Drive with WASD!', 'color:#0ff');
+        console.log('%c[Laser Track Racer] Curved track with apexes + start/finish added (CatmullRomCurve3)!', 'color:#0ff');
     </script>
 </body>
 </html>
