@@ -15,7 +15,7 @@
 <body>
     <div id="ui">
         <div id="speed">SPEED: 0 km/h</div>
-        <div style="margin-top:6px; font-size:13px; color:#555;">WASD / Arrows • Realistic Track</div>
+        <div style="margin-top:6px; font-size:13px; color:#555;">WASD / Arrows • Better Road & Track</div>
     </div>
 
     <script>
@@ -27,13 +27,13 @@
         document.body.appendChild(renderer.domElement);
 
         // Natural daylight
-        scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-        const sun = new THREE.DirectionalLight(0xffffff, 0.9);
+        scene.add(new THREE.AmbientLight(0xffffff, 0.65));
+        const sun = new THREE.DirectionalLight(0xffffff, 0.85);
         sun.position.set(100, 150, 80);
         sun.castShadow = true;
         scene.add(sun);
 
-        // === REALISTIC TRACK (Satellite / Street View style) ===
+        // Track points
         const trackPoints = [
             new THREE.Vector3(0, 0, -110), new THREE.Vector3(0, 0, -60), new THREE.Vector3(0, 0, -10),
             new THREE.Vector3(35, 0, 25), new THREE.Vector3(75, 0, 55),
@@ -47,99 +47,106 @@
 
         const curve = new THREE.CatmullRomCurve3(trackPoints, true, 'centripetal', 0.5);
 
-        // Asphalt road
+        // === BETTER ROAD ===
+        // Main asphalt
         const road = new THREE.Mesh(
-            new THREE.TubeGeometry(curve, 220, 16, 8, true),
-            new THREE.MeshLambertMaterial({ color: 0x333333 })
+            new THREE.TubeGeometry(curve, 240, 15.5, 8, true),
+            new THREE.MeshLambertMaterial({ color: 0x2f2f2f })
         );
         road.receiveShadow = true;
         scene.add(road);
 
-        // White center line dashes (realistic road markings)
-        const lineMat = new THREE.MeshLambertMaterial({ color: 0xeeeeee });
+        // === EDGE LINES (Solid white lines on both sides) ===
+        const edgeLineMat = new THREE.MeshLambertMaterial({ color: 0xeeeeee });
+        const leftEdge = new THREE.Mesh(new THREE.TubeGeometry(curve, 240, 0.6, 6, true), edgeLineMat);
+        leftEdge.position.y = 0.25;
+        scene.add(leftEdge);
+
+        const rightEdge = leftEdge.clone();
+        scene.add(rightEdge);
+
+        // === IMPROVED CENTER DASHES (More realistic) ===
+        const centerDashMat = new THREE.MeshLambertMaterial({ color: 0xeeeeee });
         const centerDashes = [];
-        for (let i = 0; i < 55; i++) {
-            const dash = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.2, 4), lineMat);
-            dash.userData = { t: i / 55 };
+        for (let i = 0; i < 60; i++) {
+            const dash = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.15, 5), centerDashMat);
+            dash.userData = { t: i / 60 };
             scene.add(dash);
             centerDashes.push(dash);
         }
 
-        // Curbs / edges
-        const curbMat = new THREE.MeshLambertMaterial({ color: 0x888888 });
-        const leftCurb = new THREE.Mesh(new THREE.TubeGeometry(curve, 220, 1.3, 6, true), curbMat);
-        leftCurb.position.y = 0.8;
+        // === BETTER CURBS ===
+        const curbMat = new THREE.MeshLambertMaterial({ color: 0x666666 });
+        const leftCurb = new THREE.Mesh(new THREE.TubeGeometry(curve, 240, 1.4, 6, true), curbMat);
+        leftCurb.position.y = 0.9;
         scene.add(leftCurb);
 
         const rightCurb = leftCurb.clone();
         scene.add(rightCurb);
 
-        // === GROUND (Grass / Terrain - Satellite view style) ===
+        // === GROUND ===
         const ground = new THREE.Mesh(
-            new THREE.PlaneGeometry(400, 400),
-            new THREE.MeshLambertMaterial({ color: 0x4a7c3f })
+            new THREE.PlaneGeometry(450, 450),
+            new THREE.MeshLambertMaterial({ color: 0x3d7a3a })
         );
         ground.rotation.x = -Math.PI / 2;
-        ground.position.y = -0.5;
+        ground.position.y = -0.6;
         scene.add(ground);
 
-        // Simple trees / vegetation
-        function addTree(x, z) {
+        // Trees
+        function addTree(x, z, scale = 1) {
             const trunk = new THREE.Mesh(
-                new THREE.CylinderGeometry(1.2, 1.5, 6, 6),
+                new THREE.CylinderGeometry(0.9 * scale, 1.2 * scale, 5 * scale, 5),
                 new THREE.MeshLambertMaterial({ color: 0x5c4033 })
             );
-            trunk.position.set(x, 2.5, z);
+            trunk.position.set(x, 2 * scale, z);
             scene.add(trunk);
 
             const foliage = new THREE.Mesh(
-                new THREE.ConeGeometry(5, 8, 6),
-                new THREE.MeshLambertMaterial({ color: 0x2e5a1f })
+                new THREE.ConeGeometry(4.5 * scale, 7 * scale, 5),
+                new THREE.MeshLambertMaterial({ color: 0x2d5c22 })
             );
-            foliage.position.set(x, 8, z);
+            foliage.position.set(x, 7 * scale, z);
             scene.add(foliage);
         }
 
-        // Scatter some trees around the track
-        for (let i = 0; i < 25; i++) {
-            const angle = (i / 25) * Math.PI * 2;
-            const radius = 70 + Math.random() * 80;
-            const x = Math.cos(angle) * radius;
-            const z = Math.sin(angle) * radius;
-            addTree(x, z);
+        for (let i = 0; i < 30; i++) {
+            const angle = (i / 30) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
+            const radius = 65 + Math.random() * 95;
+            addTree(Math.cos(angle) * radius, Math.sin(angle) * radius, 0.8 + Math.random() * 0.6);
         }
 
-        // Start/Finish line
+        // Start/Finish
         const startPos = curve.getPointAt(0);
         const startFinish = new THREE.Mesh(
-            new THREE.PlaneGeometry(36, 7),
+            new THREE.PlaneGeometry(34, 6.5),
             new THREE.MeshLambertMaterial({ color: 0xffffff })
         );
         startFinish.rotation.x = -Math.PI / 2;
-        startFinish.position.set(startPos.x, 0.1, startPos.z);
+        startFinish.position.set(startPos.x, 0.05, startPos.z);
         scene.add(startFinish);
 
         // Car
         const car = new THREE.Group();
-        const body = new THREE.Mesh(new THREE.BoxGeometry(4, 1.5, 8.5), new THREE.MeshLambertMaterial({ color: 0x3366cc }));
-        body.position.y = 1.5;
+        const body = new THREE.Mesh(new THREE.BoxGeometry(3.9, 1.45, 8.2), new THREE.MeshLambertMaterial({ color: 0x2a5fcc }));
+        body.position.y = 1.45;
         car.add(body);
 
-        const glass = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.2, 3.5), new THREE.MeshLambertMaterial({ color: 0x88bbff, transparent: true, opacity: 0.6 }));
-        glass.position.set(0, 2.3, -1.5);
+        const glass = new THREE.Mesh(new THREE.BoxGeometry(3.1, 1.15, 3.3), new THREE.MeshLambertMaterial({ color: 0x88bbff, transparent: true, opacity: 0.55 }));
+        glass.position.set(0, 2.2, -1.4);
         car.add(glass);
 
         scene.add(car);
-        camera.position.set(0, 4.2, -3.8);
+        camera.position.set(0, 4.1, -3.6);
         car.add(camera);
 
         // Physics
         let speed = 0;
         let angle = 0;
-        const MAX_SPEED = 140;
-        const ACCEL = 1.1;
-        const FRICTION = 0.96;
-        const TURN_SPEED = 0.03;
+        const MAX_SPEED = 138;
+        const ACCEL = 1.08;
+        const FRICTION = 0.958;
+        const TURN_SPEED = 0.029;
 
         const keys = {};
         window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
@@ -147,26 +154,25 @@
 
         function updatePhysics() {
             if (keys['w'] || keys['arrowup']) speed += ACCEL;
-            if (keys['s'] || keys['arrowdown']) speed -= ACCEL * 0.8;
+            if (keys['s'] || keys['arrowdown']) speed -= ACCEL * 0.78;
 
-            const steerFactor = Math.max(0.4, Math.abs(speed) / 50);
+            const steerFactor = Math.max(0.42, Math.abs(speed) / 48);
             if (keys['a'] || keys['arrowleft']) angle += TURN_SPEED * steerFactor;
             if (keys['d'] || keys['arrowright']) angle -= TURN_SPEED * steerFactor;
 
             speed *= FRICTION;
-            speed = Math.max(-35, Math.min(MAX_SPEED, speed));
+            speed = Math.max(-32, Math.min(MAX_SPEED, speed));
 
-            const moveX = Math.sin(angle) * speed * 0.05;
-            const moveZ = Math.cos(angle) * speed * 0.05;
+            const moveX = Math.sin(angle) * speed * 0.048;
+            const moveZ = Math.cos(angle) * speed * 0.048;
 
             car.position.x += moveX;
             car.position.z += moveZ;
             car.rotation.y = angle;
 
-            // Keep on track
             const dist = Math.sqrt(car.position.x * car.position.x + car.position.z * car.position.z);
-            if (dist > 100) {
-                const s = 100 / dist;
+            if (dist > 98) {
+                const s = 98 / dist;
                 car.position.x *= s;
                 car.position.z *= s;
                 speed *= 0.5;
@@ -175,20 +181,17 @@
             document.getElementById('speed').textContent = `SPEED: ${Math.abs(Math.floor(speed))} km/h`;
         }
 
-        let time = 0;
-
         function animate() {
             requestAnimationFrame(animate);
-            time += 0.016;
 
             updatePhysics();
 
-            // Animated white center dashes (subtle flow)
+            // Flowing center dashes
             centerDashes.forEach(dash => {
-                dash.userData.t = (dash.userData.t + 0.006) % 1;
+                dash.userData.t = (dash.userData.t + 0.0055) % 1;
                 const pos = curve.getPointAt(dash.userData.t);
                 dash.position.copy(pos);
-                dash.position.y = 0.35;
+                dash.position.y = 0.32;
             });
 
             renderer.render(scene, camera);
@@ -201,7 +204,7 @@
         });
 
         animate();
-        console.log('%c[Street View Racer] Realistic satellite/street view style track added!', 'color:#555');
+        console.log('%c[Street View Racer] Significantly improved road and track implemented!', 'color:#555');
     </script>
 </body>
 </html>
