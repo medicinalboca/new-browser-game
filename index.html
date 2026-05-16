@@ -3,28 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Laser Track Racer - Animated Track</title>
+    <title>Street View Racer</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
-        body { margin:0; overflow:hidden; background:#000; color:#0ff; font-family: 'Press Start 2P', system-ui; }
-        #ui { position:absolute; top:20px; left:20px; z-index:100; text-shadow: 0 0 10px #0ff; }
-        #speed { font-size:28px; }
+        body { margin:0; overflow:hidden; background:#87ceeb; color:#333; font-family: system-ui; }
+        #ui { position:absolute; top:20px; left:20px; z-index:100; }
+        #speed { font-size:24px; font-weight:bold; }
         canvas { display:block; }
     </style>
 </head>
 <body>
     <div id="ui">
         <div id="speed">SPEED: 0 km/h</div>
-        <div style="margin-top:8px; font-size:13px; opacity:0.85;">WASD/Arrows • First Person • Animated Laser Track</div>
+        <div style="margin-top:6px; font-size:13px; color:#555;">WASD / Arrows • Realistic Track</div>
     </div>
 
     <script>
-        // =============================================
-        // LASER TRACK RACER - First Person 3D
-        // Animated glowing laser track with flowing effects
-        // =============================================
-
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -32,12 +26,14 @@
         renderer.shadowMap.enabled = true;
         document.body.appendChild(renderer.domElement);
 
-        scene.add(new THREE.AmbientLight(0x222244, 0.5));
+        // Natural daylight
+        scene.add(new THREE.AmbientLight(0xffffff, 0.6));
         const sun = new THREE.DirectionalLight(0xffffff, 0.9);
-        sun.position.set(80, 120, 50);
+        sun.position.set(100, 150, 80);
+        sun.castShadow = true;
         scene.add(sun);
 
-        // Track points (straights + corners)
+        // === REALISTIC TRACK (Satellite / Street View style) ===
         const trackPoints = [
             new THREE.Vector3(0, 0, -110), new THREE.Vector3(0, 0, -60), new THREE.Vector3(0, 0, -10),
             new THREE.Vector3(35, 0, 25), new THREE.Vector3(75, 0, 55),
@@ -51,77 +47,99 @@
 
         const curve = new THREE.CatmullRomCurve3(trackPoints, true, 'centripetal', 0.5);
 
-        // Road
+        // Asphalt road
         const road = new THREE.Mesh(
-            new THREE.TubeGeometry(curve, 220, 17, 8, true),
-            new THREE.MeshLambertMaterial({ color: 0x0a0a1f })
+            new THREE.TubeGeometry(curve, 220, 16, 8, true),
+            new THREE.MeshLambertMaterial({ color: 0x333333 })
         );
         road.receiveShadow = true;
         scene.add(road);
 
-        // === ANIMATED LASER RAILS ===
-        const railMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
-        const leftRail = new THREE.Mesh(new THREE.TubeGeometry(curve, 220, 1.1, 6, true), railMat);
-        leftRail.position.y = 2;
-        scene.add(leftRail);
-
-        const rightRail = leftRail.clone();
-        scene.add(rightRail);
-
-        // Store rails for animation
-        const rails = [leftRail, rightRail];
-
-        // === ANIMATED CENTER DASHES (flowing effect) ===
-        const dashMat = new THREE.MeshBasicMaterial({ color: 0x00ffaa });
-        const dashes = [];
-        for (let i = 0; i < 50; i++) {
-            const dash = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.35, 2.8), dashMat);
-            dash.userData = { t: i / 50 }; // parameter along curve
+        // White center line dashes (realistic road markings)
+        const lineMat = new THREE.MeshLambertMaterial({ color: 0xeeeeee });
+        const centerDashes = [];
+        for (let i = 0; i < 55; i++) {
+            const dash = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.2, 4), lineMat);
+            dash.userData = { t: i / 55 };
             scene.add(dash);
-            dashes.push(dash);
+            centerDashes.push(dash);
+        }
+
+        // Curbs / edges
+        const curbMat = new THREE.MeshLambertMaterial({ color: 0x888888 });
+        const leftCurb = new THREE.Mesh(new THREE.TubeGeometry(curve, 220, 1.3, 6, true), curbMat);
+        leftCurb.position.y = 0.8;
+        scene.add(leftCurb);
+
+        const rightCurb = leftCurb.clone();
+        scene.add(rightCurb);
+
+        // === GROUND (Grass / Terrain - Satellite view style) ===
+        const ground = new THREE.Mesh(
+            new THREE.PlaneGeometry(400, 400),
+            new THREE.MeshLambertMaterial({ color: 0x4a7c3f })
+        );
+        ground.rotation.x = -Math.PI / 2;
+        ground.position.y = -0.5;
+        scene.add(ground);
+
+        // Simple trees / vegetation
+        function addTree(x, z) {
+            const trunk = new THREE.Mesh(
+                new THREE.CylinderGeometry(1.2, 1.5, 6, 6),
+                new THREE.MeshLambertMaterial({ color: 0x5c4033 })
+            );
+            trunk.position.set(x, 2.5, z);
+            scene.add(trunk);
+
+            const foliage = new THREE.Mesh(
+                new THREE.ConeGeometry(5, 8, 6),
+                new THREE.MeshLambertMaterial({ color: 0x2e5a1f })
+            );
+            foliage.position.set(x, 8, z);
+            scene.add(foliage);
+        }
+
+        // Scatter some trees around the track
+        for (let i = 0; i < 25; i++) {
+            const angle = (i / 25) * Math.PI * 2;
+            const radius = 70 + Math.random() * 80;
+            const x = Math.cos(angle) * radius;
+            const z = Math.sin(angle) * radius;
+            addTree(x, z);
         }
 
         // Start/Finish line
         const startPos = curve.getPointAt(0);
         const startFinish = new THREE.Mesh(
-            new THREE.PlaneGeometry(38, 8),
-            new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide })
+            new THREE.PlaneGeometry(36, 7),
+            new THREE.MeshLambertMaterial({ color: 0xffffff })
         );
         startFinish.rotation.x = -Math.PI / 2;
-        startFinish.position.set(startPos.x, 0.25, startPos.z);
+        startFinish.position.set(startPos.x, 0.1, startPos.z);
         scene.add(startFinish);
-
-        for (let i = -16; i < 17; i += 5.5) {
-            const stripe = new THREE.Mesh(
-                new THREE.PlaneGeometry(4.5, 8),
-                new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide })
-            );
-            stripe.rotation.x = -Math.PI / 2;
-            stripe.position.set(startPos.x + i, 0.3, startPos.z);
-            scene.add(stripe);
-        }
 
         // Car
         const car = new THREE.Group();
-        const body = new THREE.Mesh(new THREE.BoxGeometry(4.2, 1.6, 9), new THREE.MeshLambertMaterial({ color: 0x4488ff }));
-        body.position.y = 1.6;
+        const body = new THREE.Mesh(new THREE.BoxGeometry(4, 1.5, 8.5), new THREE.MeshLambertMaterial({ color: 0x3366cc }));
+        body.position.y = 1.5;
         car.add(body);
 
-        const glass = new THREE.Mesh(new THREE.BoxGeometry(3.4, 1.4, 3.8), new THREE.MeshLambertMaterial({ color: 0x99eeff, transparent: true, opacity: 0.45 }));
-        glass.position.set(0, 2.5, -1.8);
+        const glass = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.2, 3.5), new THREE.MeshLambertMaterial({ color: 0x88bbff, transparent: true, opacity: 0.6 }));
+        glass.position.set(0, 2.3, -1.5);
         car.add(glass);
 
         scene.add(car);
-        camera.position.set(0, 4.5, -4);
+        camera.position.set(0, 4.2, -3.8);
         car.add(camera);
 
         // Physics
         let speed = 0;
         let angle = 0;
-        const MAX_SPEED = 145;
-        const ACCEL = 1.15;
-        const FRICTION = 0.962;
-        const TURN_SPEED = 0.032;
+        const MAX_SPEED = 140;
+        const ACCEL = 1.1;
+        const FRICTION = 0.96;
+        const TURN_SPEED = 0.03;
 
         const keys = {};
         window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
@@ -129,28 +147,29 @@
 
         function updatePhysics() {
             if (keys['w'] || keys['arrowup']) speed += ACCEL;
-            if (keys['s'] || keys['arrowdown']) speed -= ACCEL * 0.85;
+            if (keys['s'] || keys['arrowdown']) speed -= ACCEL * 0.8;
 
-            const steerFactor = Math.max(0.35, Math.abs(speed) / 55);
+            const steerFactor = Math.max(0.4, Math.abs(speed) / 50);
             if (keys['a'] || keys['arrowleft']) angle += TURN_SPEED * steerFactor;
             if (keys['d'] || keys['arrowright']) angle -= TURN_SPEED * steerFactor;
 
             speed *= FRICTION;
-            speed = Math.max(-40, Math.min(MAX_SPEED, speed));
+            speed = Math.max(-35, Math.min(MAX_SPEED, speed));
 
-            const moveX = Math.sin(angle) * speed * 0.055;
-            const moveZ = Math.cos(angle) * speed * 0.055;
+            const moveX = Math.sin(angle) * speed * 0.05;
+            const moveZ = Math.cos(angle) * speed * 0.05;
 
             car.position.x += moveX;
             car.position.z += moveZ;
             car.rotation.y = angle;
 
+            // Keep on track
             const dist = Math.sqrt(car.position.x * car.position.x + car.position.z * car.position.z);
-            if (dist > 105) {
-                const s = 105 / dist;
+            if (dist > 100) {
+                const s = 100 / dist;
                 car.position.x *= s;
                 car.position.z *= s;
-                speed *= 0.55;
+                speed *= 0.5;
             }
 
             document.getElementById('speed').textContent = `SPEED: ${Math.abs(Math.floor(speed))} km/h`;
@@ -164,23 +183,12 @@
 
             updatePhysics();
 
-            // === BETTER TRACK ANIMATION ===
-            // 1. Pulsing glow on laser rails
-            const pulse = 0.7 + Math.sin(time * 3) * 0.3;
-            rails.forEach(rail => {
-                rail.material.color.setHSL(0.5, 1, pulse);
-            });
-
-            // 2. Flowing center dashes (moving forward along track)
-            dashes.forEach(dash => {
-                dash.userData.t = (dash.userData.t + 0.008) % 1;
+            // Animated white center dashes (subtle flow)
+            centerDashes.forEach(dash => {
+                dash.userData.t = (dash.userData.t + 0.006) % 1;
                 const pos = curve.getPointAt(dash.userData.t);
                 dash.position.copy(pos);
-                dash.position.y = 0.55;
-
-                // Subtle scale pulse
-                const scalePulse = 0.9 + Math.sin(time * 4 + dash.userData.t * 10) * 0.2;
-                dash.scale.set(1, scalePulse, 1);
+                dash.position.y = 0.35;
             });
 
             renderer.render(scene, camera);
@@ -193,7 +201,7 @@
         });
 
         animate();
-        console.log('%c[Laser Track Racer] Better animated laser track added!', 'color:#0ff');
+        console.log('%c[Street View Racer] Realistic satellite/street view style track added!', 'color:#555');
     </script>
 </body>
 </html>
