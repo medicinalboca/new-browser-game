@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Laser Track Racer - Curved Track</title>
+    <title>Laser Track Racer - Full Track</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
@@ -16,15 +16,14 @@
 <body>
     <div id="ui">
         <div id="speed">SPEED: 0 km/h</div>
-        <div style="margin-top:8px; font-size:13px; opacity:0.85;">WASD/Arrows • First Person • Curved Laser Track</div>
+        <div style="margin-top:8px; font-size:13px; opacity:0.85;">WASD/Arrows • First Person • Full Track with Straights</div>
     </div>
 
     <script>
         // =============================================
         // LASER TRACK RACER - First Person 3D
-        // Track built using THREE.CatmullRomCurve3 (official Three.js)
-        // + common public patterns from open-source racing demos
-        // (e.g. cconsta1/threejs_car_demo style curves + apex points)
+        // Complete track with LONG STRAIGHTS + corners (apexes)
+        // Using THREE.CatmullRomCurve3 (official public Three.js)
         // =============================================
 
         const scene = new THREE.Scene();
@@ -39,92 +38,101 @@
         sun.position.set(80, 120, 50);
         scene.add(sun);
 
-        // === COMPLETE CURVED TRACK WITH APEXES + START/FINISH ===
-        // Points define the racing line with corners (apexes)
+        // === FULL TRACK: LONG STRAIGHTS + CORNERS WITH APEXES ===
+        // Designed with clear high-speed straights and technical corners
         const trackPoints = [
-            new THREE.Vector3(0, 0, -100),
-            new THREE.Vector3(60, 0, -80),
-            new THREE.Vector3(85, 0, -20),   // Apex 1 (right turn)
-            new THREE.Vector3(70, 0, 50),
-            new THREE.Vector3(20, 0, 90),    // Apex 2
-            new THREE.Vector3(-50, 0, 85),
-            new THREE.Vector3(-90, 0, 40),   // Apex 3 (left turn)
-            new THREE.Vector3(-85, 0, -30),
-            new THREE.Vector3(-40, 0, -85),
-            new THREE.Vector3(0, 0, -100)    // back to start
+            // Start/Finish straight (long)
+            new THREE.Vector3(0, 0, -110),
+            new THREE.Vector3(0, 0, -60),
+            new THREE.Vector3(0, 0, -10),
+
+            // Corner 1 (right turn apex)
+            new THREE.Vector3(35, 0, 25),
+            new THREE.Vector3(75, 0, 55),
+
+            // Short straight after corner
+            new THREE.Vector3(85, 0, 90),
+
+            // Corner 2 (left turn apex)
+            new THREE.Vector3(50, 0, 115),
+            new THREE.Vector3(10, 0, 120),
+
+            // Long back straight
+            new THREE.Vector3(-40, 0, 115),
+            new THREE.Vector3(-85, 0, 90),
+
+            // Corner 3 (left turn apex)
+            new THREE.Vector3(-95, 0, 50),
+            new THREE.Vector3(-85, 0, 10),
+
+            // Corner 4 (right turn apex)
+            new THREE.Vector3(-50, 0, -30),
+            new THREE.Vector3(-20, 0, -70),
+
+            // Back to start straight
+            new THREE.Vector3(0, 0, -110)
         ];
 
         const curve = new THREE.CatmullRomCurve3(trackPoints, true, 'centripetal', 0.5);
 
-        // Generate road along the curve using TubeGeometry
-        const roadGeometry = new THREE.TubeGeometry(curve, 200, 18, 8, true);
-        const roadMaterial = new THREE.MeshLambertMaterial({ color: 0x0a0a1f });
-        const road = new THREE.Mesh(roadGeometry, roadMaterial);
+        // Road along the curve
+        const roadGeometry = new THREE.TubeGeometry(curve, 220, 17, 8, true);
+        const road = new THREE.Mesh(roadGeometry, new THREE.MeshLambertMaterial({ color: 0x0a0a1f }));
         road.receiveShadow = true;
         scene.add(road);
 
-        // Glowing laser rails along the curve
+        // Glowing laser rails
         const railMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
-        const leftRailGeo = new THREE.TubeGeometry(curve, 200, 1.2, 6, true);
-        const leftRail = new THREE.Mesh(leftRailGeo, railMat);
+        const leftRail = new THREE.Mesh(new THREE.TubeGeometry(curve, 220, 1.1, 6, true), railMat);
         leftRail.position.y = 2;
         scene.add(leftRail);
 
         const rightRail = leftRail.clone();
-        rightRail.position.y = 2;
         scene.add(rightRail);
 
-        // Neon center dashes
+        // Center neon dashes
         const dashMat = new THREE.MeshBasicMaterial({ color: 0x00ffaa });
-        for (let i = 0; i < 40; i++) {
-            const t = i / 40;
-            const pos = curve.getPointAt(t);
-            const dash = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.4, 3), dashMat);
+        for (let i = 0; i < 45; i++) {
+            const pos = curve.getPointAt(i / 45);
+            const dash = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.35, 2.8), dashMat);
             dash.position.copy(pos);
-            dash.position.y = 0.6;
+            dash.position.y = 0.55;
             scene.add(dash);
         }
 
         // === START / FINISH LINE ===
         const startPos = curve.getPointAt(0);
         const startFinish = new THREE.Mesh(
-            new THREE.PlaneGeometry(42, 9),
+            new THREE.PlaneGeometry(38, 8),
             new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide })
         );
         startFinish.rotation.x = -Math.PI / 2;
-        startFinish.position.set(startPos.x, 0.3, startPos.z);
+        startFinish.position.set(startPos.x, 0.25, startPos.z);
         scene.add(startFinish);
 
-        // Checkered stripes on start/finish
-        for (let i = -18; i < 18; i += 6) {
+        // Checkered pattern
+        for (let i = -16; i < 17; i += 5.5) {
             const stripe = new THREE.Mesh(
-                new THREE.PlaneGeometry(5, 9),
+                new THREE.PlaneGeometry(4.5, 8),
                 new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide })
             );
             stripe.rotation.x = -Math.PI / 2;
-            stripe.position.set(startPos.x + i, 0.35, startPos.z);
+            stripe.position.set(startPos.x + i, 0.3, startPos.z);
             scene.add(stripe);
         }
 
         // === CAR ===
         const car = new THREE.Group();
-        const body = new THREE.Mesh(
-            new THREE.BoxGeometry(4.2, 1.6, 9),
-            new THREE.MeshLambertMaterial({ color: 0x4488ff })
-        );
+        const body = new THREE.Mesh(new THREE.BoxGeometry(4.2, 1.6, 9), new THREE.MeshLambertMaterial({ color: 0x4488ff }));
         body.position.y = 1.6;
         car.add(body);
 
-        const glass = new THREE.Mesh(
-            new THREE.BoxGeometry(3.4, 1.4, 3.8),
-            new THREE.MeshLambertMaterial({ color: 0x99eeff, transparent: true, opacity: 0.45 })
-        );
+        const glass = new THREE.Mesh(new THREE.BoxGeometry(3.4, 1.4, 3.8), new THREE.MeshLambertMaterial({ color: 0x99eeff, transparent: true, opacity: 0.45 }));
         glass.position.set(0, 2.5, -1.8);
         car.add(glass);
 
         scene.add(car);
 
-        // First person camera
         camera.position.set(0, 4.5, -4);
         car.add(camera);
 
@@ -158,13 +166,13 @@
             car.position.z += moveZ;
             car.rotation.y = angle;
 
-            // Keep car on track (simple radial boundary)
+            // Track boundary
             const dist = Math.sqrt(car.position.x * car.position.x + car.position.z * car.position.z);
-            if (dist > 100) {
-                const s = 100 / dist;
+            if (dist > 105) {
+                const s = 105 / dist;
                 car.position.x *= s;
                 car.position.z *= s;
-                speed *= 0.6;
+                speed *= 0.55;
             }
 
             document.getElementById('speed').textContent = `SPEED: ${Math.abs(Math.floor(speed))} km/h`;
@@ -183,7 +191,7 @@
         });
 
         animate();
-        console.log('%c[Laser Track Racer] Curved track with apexes + start/finish added (CatmullRomCurve3)!', 'color:#0ff');
+        console.log('%c[Laser Track Racer] Full track with long straights + corners added!', 'color:#0ff');
     </script>
 </body>
 </html>
